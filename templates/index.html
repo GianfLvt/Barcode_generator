@@ -102,6 +102,8 @@
         <div class="container">
             <h1>Generatore di Barcode</h1>
             <form method="POST">
+                <label for="product_name">Nome prodotto:</label>
+                <input type="text" name="product_name" id="product_name" value="{{ product_name|default('') }}">
                 <label for="barcode">Inserisci codice:</label>
                 <input type="text" name="barcode" id="barcode" required>
                 <div class="buttons">
@@ -112,7 +114,26 @@
             {% if barcode_path %}
             <img src="{{ barcode_path }}" alt="Anteprima Barcode">
             <div class="buttons">
-                <a href="/print" target="_blank"><button>Stampa Barcode</button></a>
+                <button id="printButton">Stampa Barcode</button>
+                <iframe id="printFrame" style="display:none;"></iframe>
+                <script>
+                    document.getElementById('printButton').addEventListener('click', function() {
+                        var productName = encodeURIComponent(document.getElementById('product_name').value);
+                        var printFrame = document.getElementById('printFrame');
+                        printFrame.src = '/print?product_name=' + productName;
+                        printFrame.onload = function() {
+                            printFrame.contentWindow.focus();
+                            printFrame.contentWindow.print();
+                            // Reset form fields and barcode preview after printing
+                            document.getElementById('barcode').value = '';
+                            document.getElementById('product_name').value = '';
+                            var barcodeImg = document.querySelector('img[alt="Anteprima Barcode"]');
+                            if (barcodeImg) {
+                                barcodeImg.src = '';
+                            }
+                        };
+                    });
+                </script>
             </div>
             {% endif %}
         </div>
