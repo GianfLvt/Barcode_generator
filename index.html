@@ -112,39 +112,46 @@
                 margin: 0;
             }
 
-            body * {
-                visibility: hidden;
+            html, body {
+                margin: 0;
+                padding: 0;
+                width: 50mm;
+                height: 25mm;
             }
 
-            #printArea,
-            #printArea * {
-                visibility: visible;
+            body > *:not(#printArea) {
+                display: none !important;
             }
 
             #printArea {
-                position: absolute;
+                display: flex !important;
+                position: fixed;
                 left: 0;
                 top: 0;
                 width: 50mm;
                 height: 25mm;
                 margin: 0;
-                padding: 0;
-                transform: none;
-                display: flex;
+                padding: 2mm;
+                box-sizing: border-box;
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
+                background: white;
             }
 
             #printProductName {
-                font-size: 8pt;
-                margin: 0 0 2mm 0;
+                font-size: 7pt;
+                margin: 0 0 1mm 0;
                 padding: 0;
+                text-align: center;
+                font-weight: bold;
             }
 
             #printBarcode {
                 margin: 0;
                 padding: 0;
+                max-width: 100%;
+                height: auto;
             }
         }
 
@@ -244,81 +251,121 @@
             // Prepara l'area di stampa
             const printProductName = document.getElementById('printProductName');
             const printBarcode = document.getElementById('printBarcode');
+            const printArea = document.getElementById('printArea');
             
+            // Imposta il nome prodotto
             if (productName) {
                 printProductName.textContent = productName;
                 printProductName.style.display = 'block';
             } else {
+                printProductName.textContent = '';
                 printProductName.style.display = 'none';
             }
 
-            // Genera il barcode ottimizzato per etichetta 50mm x 25mm
-            JsBarcode(printBarcode, code, {
-                format: "CODE128",
-                width: 1.5,
-                height: 40,
-                displayValue: true,
-                fontSize: 12,
-                margin: 2,
-                marginTop: productName ? 2 : 5,
-                marginBottom: 2
-            });
-
-            // Mostra temporaneamente l'area di stampa per permettere il rendering
-            const printArea = document.getElementById('printArea');
+            // Mostra l'area di stampa prima di generare il barcode
             printArea.style.display = 'flex';
+            printArea.style.position = 'fixed';
+            printArea.style.left = '-9999px';
+            printArea.style.top = '0';
 
-            // Aspetta che il barcode sia renderizzato prima di stampare
-            setTimeout(function() {
-                window.print();
+            // Genera il barcode ottimizzato per etichetta 50mm x 25mm
+            // 50mm ≈ 189px, 25mm ≈ 94px (a 96 DPI)
+            try {
+                JsBarcode(printBarcode, code, {
+                    format: "CODE128",
+                    width: 1.2,
+                    height: productName ? 35 : 45,
+                    displayValue: true,
+                    fontSize: 10,
+                    margin: 1,
+                    marginTop: 1,
+                    marginBottom: 1
+                });
+
+                // Aspetta che il barcode sia renderizzato prima di stampare
+                setTimeout(function() {
+                    window.print();
+                    
+                    // Dopo la stampa, nascondi nuovamente l'area
+                    setTimeout(function() {
+                        printArea.style.display = 'none';
+                        printArea.style.position = '';
+                        printArea.style.left = '';
+                        printArea.style.top = '';
+                    }, 500);
+                }, 300);
+            } catch (error) {
+                alert('Errore nella generazione del barcode per la stampa: ' + error.message);
                 printArea.style.display = 'none';
-            }, 100);
+            }
         });
 
         downloadButton.addEventListener('click', function() {
             const code = barcodeInput.value.trim();
             const productName = productNameInput.value.trim();
             
-            // Crea un canvas temporaneo per il download
-            const svg = barcodeCanvas;
-            const svgData = new XMLSerializer().serializeToString(svg);
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const img = new Image();
+            // Crea un SVG temporaneo per il download con dimensioni ottimizzate
+            const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             
-            img.onload = function() {
-                // Aggiungi spazio per il nome prodotto se presente
-                const extraHeight = productName ? 40 : 0;
-                canvas.width = img.width;
-                canvas.height = img.height + extraHeight;
-                
-                // Sfondo bianco
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Aggiungi nome prodotto se presente
-                if (productName) {
-                    ctx.fillStyle = 'black';
-                    ctx.font = '20px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(productName, canvas.width / 2, 25);
-                }
-                
-                // Disegna il barcode
-                ctx.drawImage(img, 0, extraHeight);
-                
-                // Download
-                canvas.toBlob(function(blob) {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `barcode_${code}.png`;
-                    a.click();
-                    URL.revokeObjectURL(url);
+            // Genera barcode ottimizzato per etichetta 50mm x 25mm
+            // 50mm = 189px, 25mm = 94px a 96 DPI
+            try {
+                JsBarcode(tempSvg, code, {
+                    format: "CODE128",
+                    width: 1.2,
+                    height: productName ? 35 : 45,
+                    displayValue: true,
+                    fontSize: 10,
+                    margin: 1
                 });
-            };
-            
-            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+
+                const svgData = new XMLSerializer().serializeToString(tempSvg);
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = function() {
+                    // Dimensioni fisse per etichetta 50mm x 25mm
+                    const labelWidth = 189; // 50mm a 96 DPI
+                    const labelHeight = 94;  // 25mm a 96 DPI
+                    canvas.width = labelWidth;
+                    canvas.height = labelHeight;
+                    
+                    // Sfondo bianco
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Aggiungi nome prodotto se presente
+                    let yOffset = 5;
+                    if (productName) {
+                        ctx.fillStyle = 'black';
+                        ctx.font = 'bold 9px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(productName, canvas.width / 2, 12);
+                        yOffset = 18;
+                    } else {
+                        yOffset = 15;
+                    }
+                    
+                    // Centra il barcode
+                    const barcodeX = (canvas.width - img.width) / 2;
+                    ctx.drawImage(img, barcodeX, yOffset);
+                    
+                    // Download
+                    canvas.toBlob(function(blob) {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `barcode_${code}.png`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    });
+                };
+                
+                img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+            } catch (error) {
+                alert('Errore nella generazione del barcode per il download: ' + error.message);
+            }
         });
     </script>
 </body>
