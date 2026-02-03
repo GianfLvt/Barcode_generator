@@ -259,54 +259,45 @@
                 return;
             }
 
-            // Prepara l'area di stampa
-            const printProductName = document.getElementById('printProductName');
-            const printBarcode = document.getElementById('printBarcode');
-            const printArea = document.getElementById('printArea');
+            // Crea un SVG temporaneo per la stampa
+            const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             
-            // Imposta il nome prodotto
-            if (productName) {
-                printProductName.textContent = productName;
-                printProductName.style.display = 'block';
-            } else {
-                printProductName.textContent = '';
-                printProductName.style.display = 'none';
-            }
-
-            // Mostra l'area di stampa prima di generare il barcode
-            printArea.style.display = 'flex';
-            printArea.style.position = 'fixed';
-            printArea.style.left = '-9999px';
-            printArea.style.top = '0';
-
-            // Genera il barcode con dimensioni grandi - verrà ridimensionato dal CSS
             try {
-                JsBarcode(printBarcode, code, {
+                JsBarcode(tempSvg, code, {
                     format: "CODE128",
-                    width: 4,
-                    height: 80,
+                    width: 2.5,
+                    height: 85,
                     displayValue: true,
-                    fontSize: 20,
-                    margin: 0,
-                    marginTop: 0,
-                    marginBottom: 0
+                    fontSize: 28,
+                    margin: 15,
+                    lineColor: '#000000'
                 });
 
-                // Aspetta che il barcode sia renderizzato prima di stampare
-                setTimeout(function() {
-                    window.print();
-                    
-                    // Dopo la stampa, nascondi nuovamente l'area
-                    setTimeout(function() {
-                        printArea.style.display = 'none';
-                        printArea.style.position = '';
-                        printArea.style.left = '';
-                        printArea.style.top = '';
-                    }, 500);
-                }, 300);
+                // Apri una nuova finestra per la stampa (come nell'altra webapp)
+                const printWindow = window.open('', '', 'width=400,height=300');
+                printWindow.document.write('<html><head><title>Stampa Barcode</title>');
+                printWindow.document.write('<style>');
+                printWindow.document.write('body { display:flex; flex-direction: column; align-items:center; margin:0; font-family: Arial, sans-serif; }');
+                printWindow.document.write('#barcode-name { font-weight: 700; margin-top: 6px; margin-bottom: 2px; color: #000; }');
+                printWindow.document.write('#barcode-container { width: 50mm; height: 25mm; padding: 1mm; box-sizing: border-box; display: flex; justify-content: center; align-items: center; overflow: visible; }');
+                printWindow.document.write('#barcode-container svg { width: 100%; height: 100%; }');
+                printWindow.document.write('</style></head><body>');
+                
+                if (productName) {
+                    printWindow.document.write('<div id="barcode-name">' + productName + '</div>');
+                }
+                
+                // Wrap SVG in container div with fixed size for adaptable scaling
+                let svgHtml = tempSvg.outerHTML;
+                if (!svgHtml.includes('style=')) {
+                    svgHtml = svgHtml.replace('<svg', '<svg style="width:100%; height:100%;"');
+                }
+                printWindow.document.write('<div id="barcode-container">' + svgHtml + '</div>');
+                printWindow.document.write('<script>window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 100); }<\/script>');
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
             } catch (error) {
                 alert('Errore nella generazione del barcode per la stampa: ' + error.message);
-                printArea.style.display = 'none';
             }
         });
 
