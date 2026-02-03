@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generatore di Barcode</title>
+    <link rel="icon" href="barcode.ico" type="image/x-icon">
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to right, #dfe9f3, #ffffff);
+            display: flex;
+            flex-direction: column;
+        }
+
+        body {
+            justify-content: center;
+            align-items: center;
+        }
+
+        .wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        .container {
+            background-color: #fefefe;
+            padding: 30px 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 400px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 24px);
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background-color: #4a90e2;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #357ABD;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #barcodeContainer {
+            margin-top: 20px;
+            display: none;
+        }
+
+        #barcodeCanvas {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .buttons {
+            margin-top: 15px;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 14px;
+            color: #777;
+            margin: 20px 0;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #printArea,
+            #printArea * {
+                visibility: visible;
+            }
+
+            #printArea {
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        #printArea {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <h1>Generatore di Barcode</h1>
+            <form id="barcodeForm">
+                <label for="product_name">Nome prodotto:</label>
+                <input type="text" name="product_name" id="product_name">
+                <label for="barcode">Inserisci codice:</label>
+                <input type="text" name="barcode" id="barcode" required>
+                <div class="buttons">
+                    <button type="submit">Genera Barcode</button>
+                </div>
+            </form>
+
+            <div id="barcodeContainer">
+                <svg id="barcodeCanvas"></svg>
+                <div class="buttons">
+                    <button id="printButton">Stampa Barcode</button>
+                    <button id="downloadButton">Scarica PNG</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Area di stampa nascosta -->
+    <div id="printArea">
+        <div style="text-align: center;">
+            <h2 id="printProductName" style="margin-bottom: 20px;"></h2>
+            <svg id="printBarcode"></svg>
+        </div>
+    </div>
+
+    <footer>
+        <p>Creato da Gianfranco Lavoratti</p>
+    </footer>
+
+    <!-- Libreria JsBarcode per generare barcode -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <script>
+        const form = document.getElementById('barcodeForm');
+        const barcodeInput = document.getElementById('barcode');
+        const productNameInput = document.getElementById('product_name');
+        const barcodeContainer = document.getElementById('barcodeContainer');
+        const barcodeCanvas = document.getElementById('barcodeCanvas');
+        const printButton = document.getElementById('printButton');
+        const downloadButton = document.getElementById('downloadButton');
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const code = barcodeInput.value.trim();
+            const productName = productNameInput.value.trim();
+            
+            if (!code) {
+                alert('Inserisci un codice valido');
+                return;
+            }
+
+            try {
+                // Genera il barcode
+                JsBarcode(barcodeCanvas, code, {
+                    format: "CODE128",
+                    width: 2,
+                    height: 100,
+                    displayValue: true,
+                    fontSize: 20,
+                    margin: 10
+                });
+
+                // Mostra il container del barcode
+                barcodeContainer.style.display = 'block';
+            } catch (error) {
+                alert('Errore nella generazione del barcode: ' + error.message);
+                barcodeContainer.style.display = 'none';
+            }
+        });
+
+        printButton.addEventListener('click', function() {
+            const code = barcodeInput.value.trim();
+            const productName = productNameInput.value.trim();
+            
+            // Prepara l'area di stampa
+            const printProductName = document.getElementById('printProductName');
+            const printBarcode = document.getElementById('printBarcode');
+            
+            if (productName) {
+                printProductName.textContent = productName;
+                printProductName.style.display = 'block';
+            } else {
+                printProductName.style.display = 'none';
+            }
+
+            // Genera il barcode per la stampa
+            JsBarcode(printBarcode, code, {
+                format: "CODE128",
+                width: 2,
+                height: 100,
+                displayValue: true,
+                fontSize: 20,
+                margin: 10
+            });
+
+            // Stampa
+            window.print();
+
+            // Reset dei campi dopo la stampa
+            setTimeout(function() {
+                barcodeInput.value = '';
+                productNameInput.value = '';
+                barcodeContainer.style.display = 'none';
+            }, 500);
+        });
+
+        downloadButton.addEventListener('click', function() {
+            const code = barcodeInput.value.trim();
+            const productName = productNameInput.value.trim();
+            
+            // Crea un canvas temporaneo per il download
+            const svg = barcodeCanvas;
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = function() {
+                // Aggiungi spazio per il nome prodotto se presente
+                const extraHeight = productName ? 40 : 0;
+                canvas.width = img.width;
+                canvas.height = img.height + extraHeight;
+                
+                // Sfondo bianco
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Aggiungi nome prodotto se presente
+                if (productName) {
+                    ctx.fillStyle = 'black';
+                    ctx.font = '20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(productName, canvas.width / 2, 25);
+                }
+                
+                // Disegna il barcode
+                ctx.drawImage(img, 0, extraHeight);
+                
+                // Download
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `barcode_${code}.png`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+            };
+            
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        });
+    </script>
+</body>
+
+</html>
